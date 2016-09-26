@@ -1,0 +1,108 @@
+---
+title: "Water Body Mapping"
+author: "Navaneethan Santhanam"
+date: "July 16, 2016"
+output: slidy_presentation
+---
+
+```{r Formatting options, echo=FALSE}
+knitr::opts_chunk$set(fig.width=8, fig.height=8, fig.path='Figs/', echo=FALSE, warning=FALSE, message=FALSE, cache=FALSE, comment.char='', comment='')
+```
+
+```{r setup, include=FALSE}
+library(maptools)
+library(rgeos)
+library(ggplot2)
+library(scales)
+library(RColorBrewer)
+library(ggmap)
+library(Cairo)
+library(magrittr)
+library(rgdal)
+library(broom)
+library(geojsonio)
+library(leaflet)
+library(sp)
+library(shiny)
+library(dplyr)
+
+setwd("~/Dropbox/Projects/Water Body Mapping/")
+```
+
+```{r Read in data}
+fname <- 'Chennai water body audit_2.csv'
+audit <- read.csv(fname, stringsAsFactors = F) %>% 
+  filter(Text != "TEST" | Q10 != "") %>% 
+  filter(!is.na(Lng) | !is.na(Lat))
+audit$Q10 <- as.factor(audit$Q10)
+
+pal <- colorFactor(palette = c("blue", "red", "darkgreen", "black"), domain = levels(audit$Q10))
+```
+
+## Encroachments Map
+```{r}
+audit.e <- audit %>% filter(Q10 == 'E')
+audit.e$Q11 <- ifelse(audit.e$Q11 == "", "Blank", audit.e$Q11)
+audit.e$Q11 <- sapply(audit.e$Q11, function(x) {
+  switch(x,
+         GB = "Govt Building",
+         PI = "Private Institution",
+         PR = "Private Residence",
+         SL = "Slum",
+         Blank = "Others")
+}) %>% unlist()
+audit.e$Q11 <- factor(audit.e$Q11, levels = audit.e$Q11 %>% unique() %>% sort(), ordered = T)
+
+pal.e <- colorFactor(palette = "BuGn", domain = levels(audit.e$Q11))
+
+leaflet(audit.e) %>% 
+  addProviderTiles(provider = "CartoDB.Positron") %>% 
+  addCircleMarkers(~jitter(Lng), ~jitter(Lat), color = pal.e(audit.e$Q11), popup = ~paste("Type: ", audit.e$Q11), opacity = 1, radius = 6) %>% 
+  addLegend(position = "bottomleft", pal = pal.e, title = "Encroachment Type",
+            values = c("Others", "Govt Building", "Private Institution", "Private Residence", "Slum"))
+```
+
+<img src="Images/E_GB.jpg" alt="Government Building" style="width:400px;height:400px;" /> <img src="Images/E_SL.jpg" alt="Slum" style="width:400px;height:400px;" />
+<img src="Images/E_PI.jpg" alt="Private Institution" style="width:400px;height:400px;" /> <img src="Images/E_PR.jpg" alt="Private Residence" style="width:400px;height:400px;" />
+
+## Garbage Map
+```{r}
+audit.g <- audit %>% filter(Q10 == 'G')
+audit.g$Q11 <- ifelse(audit.g$Q11 == "", "Blank", audit.g$Q11)
+
+leaflet(audit.g) %>% 
+  addTiles() %>%
+  addCircleMarkers(~jitter(Lng), ~jitter(Lat), radius = 5, color = pal("G"), opacity = 1)
+```
+
+```{r, out.width = 400, out.height=400, fig.retina = NULL}
+knitr::include_graphics("Images/G.jpg")
+```
+
+## Not Connected Map
+```{r}
+audit.nc <- audit %>% filter(Q10 == "NC")
+audit.nc$Q11 <- ifelse(audit.nc$Q11 == "", "Blank", audit.nc$Q11)
+
+leaflet(audit.nc) %>% 
+  addProviderTiles(provider = "CartoDB.Positron") %>% 
+  addCircleMarkers(~jitter(Lng), ~jitter(Lat), radius = 5, color = pal("NC"), opacity = 1)
+```
+
+```{r, out.width = 400, out.height=400, fig.retina = NULL}
+knitr::include_graphics("Images/NC.jpg")
+```
+
+## Plants & Trees Map
+```{r}
+audit.p <- audit %>% filter(Q10 == "P")
+audit.p$Q11 <- ifelse(audit.p$Q11 == "", "Blank", audit.p$Q11)
+
+leaflet(audit.p) %>% 
+  addProviderTiles(provider = "CartoDB.Positron") %>% 
+  addCircleMarkers(~jitter(Lng), ~jitter(Lat), radius = 5, color = pal("P"), opacity = 1)
+```
+
+```{r, out.width = 400, out.height=400, fig.retina = NULL}
+knitr::include_graphics("Images/P.jpg")
+```
